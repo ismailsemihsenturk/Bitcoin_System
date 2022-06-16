@@ -45,7 +45,7 @@ class MongoService {
                
             }
             
-            this.mongoDbObjs(dbobj); 
+            // this.mongoDbObjs(dbobj); 
             this.Client.close();
           
          
@@ -55,9 +55,9 @@ class MongoService {
         return resolve("Server ayağa kaldırıldı.");
     }
 
-    mongoDbObjs(_dbObj:Db){
-        this.DbObject = _dbObj;
-    }
+    // mongoDbObjs(_dbObj:Db){
+    //     // this.DbObject = _dbObj;
+    // }
 
     async addMongo(_addObj: any) {
         let addObj =  this.DbObject;

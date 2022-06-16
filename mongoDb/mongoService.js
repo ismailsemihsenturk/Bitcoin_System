@@ -93,7 +93,7 @@ var MongoService = /** @class */ (function () {
         });
     };
     MongoService.prototype.mongoDbObjs = function (_dbObj) {
-        this.DbObject = _dbObj;
+        // this.DbObject = _dbObj;
     };
     MongoService.prototype.addMongo = function (_addObj) {
         return __awaiter(this, void 0, void 0, function () {
