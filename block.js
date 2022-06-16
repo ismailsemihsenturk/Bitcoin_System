@@ -1,5 +1,6 @@
 "use strict";
 exports.__esModule = true;
+exports.Block = exports.Blockchain = void 0;
 var sha256JS = require("crypto-js/sha256.js"); // import CryptoJS = require('./index'); şeklinde atama yapıldığı için * as x şeklinde import etmek gerek.
 // import {EC} from "elliptic/lib/elliptic/ec/index.js" ecma5 ile yazıldığı için export {EC} değil module.exports = EC bu yüzden require ile atama gerekiyor.
 // Yukarıdakilerin çalışması için type defination lazım olursa npm i @types/elliptic --save-dev şeklinde @types'ları indirmek gerek. 
@@ -15,12 +16,21 @@ var Block = /** @class */ (function () {
         this.Data = _data;
         this.PrevBlockHash = _prevBlockHash;
         this.Hash = this.setHash();
+        this.Nonce = 0;
     }
     Block.prototype.setHash = function () {
-        return SHA256(this.Timestamp + JSON.stringify(this.Data) + this.PrevBlockHash).toString();
+        return SHA256(this.Timestamp + JSON.stringify(this.Data) + this.PrevBlockHash + this.Nonce).toString();
+    };
+    Block.prototype.mineBlock = function (difficulty) {
+        while (this.Hash.substring(0, difficulty) !== Array(difficulty + 1).join("0")) {
+            this.Nonce++;
+            this.Hash = this.setHash();
+        }
+        console.log("Nonce: " + this.Nonce + "\n" + "Block mined: " + this.Hash);
     };
     return Block;
 }());
+exports.Block = Block;
 var Blockchain = /** @class */ (function () {
     function Blockchain() {
         this.Blocks = [this.createGenesisBlock()];
@@ -35,6 +45,4 @@ var Blockchain = /** @class */ (function () {
     };
     return Blockchain;
 }());
-var ISO = new Blockchain();
-ISO.addBlock({ amount: 100 });
-console.log(JSON.stringify(ISO, null, 4));
+exports.Blockchain = Blockchain;

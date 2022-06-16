@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -p src",
     "start": "tsc main.ts && node .",
-    "start_block": "tsc block.ts && node block.js"
+    "start_block": "tsc block.ts && node block.js",
+    "start_mongo": "tsc ./mongoDb/mongoService.ts && node ./mongoDb/mongoService.js"
   },
   "keywords": [],
   "author": "",
@@ -15,11 +16,13 @@
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",
     "@types/elliptic": "^6.4.14",
+    "@types/node": "^18.0.0",
     "typescript": "^4.7.3"
   },
   "dependencies": {
     "crypto-js": "^4.1.1",
     "dotenv": "^16.0.1",
-    "elliptic": "^6.5.4"
+    "elliptic": "^6.5.4",
+    "mongodb": "^4.7.0"
   }
 }
