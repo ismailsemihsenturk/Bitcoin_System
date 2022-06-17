@@ -83,7 +83,6 @@ var MongoService = /** @class */ (function () {
                         CollectionArr = _a.concat([(_c.colDocCount = _d.sent(),
                                 _c.schema = chainstateDocs,
                                 _c)]);
-                        console.log(JSON.stringify(CollectionArr));
                         _i = 0, CollectionArr_1 = CollectionArr;
                         _d.label = 4;
                     case 4:
@@ -96,7 +95,7 @@ var MongoService = /** @class */ (function () {
                         console.log(index.colName + " oluşturuldu");
                         return [3 /*break*/, 7];
                     case 6:
-                        console.log("Bu tablo zaten var.");
+                        console.log(index.colName + " isimli tablo zaten var.");
                         _d.label = 7;
                     case 7:
                         _i++;
@@ -165,10 +164,14 @@ var MongoService = /** @class */ (function () {
     return MongoService;
 }());
 var Iso_MongoService = new MongoService();
-Iso_MongoService.Blockchain.addBlock({ amount: 150 });
-console.log(JSON.stringify(Iso_MongoService.Blockchain, null, 4));
-var block_Hash = Iso_MongoService.Blockchain.Blocks[1].Hash;
-var Lastblock_Hash = Iso_MongoService.Blockchain.Blocks[Iso_MongoService.Blockchain.Blocks.length - 1].PrevBlockHash;
+var BlockChainInstance = Iso_MongoService.Blockchain.addBlock({ amount: 150 });
+console.log(JSON.stringify(BlockChainInstance, null, 4));
+var Block_Encoded = btoa(JSON.stringify(BlockChainInstance[BlockChainInstance.length - 1]));
+// let Block_Decoded = atob(Block_Encoded);
+// let a = JSON.parse(Block_Decoded);
+// console.log(a.Hash);
+var block_Hash = Block_Encoded;
+var Lastblock_Hash = BlockChainInstance[BlockChainInstance.length - 1].PrevBlockHash;
 var _addObj_blocks = {
     b: block_Hash,
     l: Lastblock_Hash
@@ -179,3 +182,5 @@ var _addObj_chainstate = {
 };
 Iso_MongoService.addMongo("blocks", _addObj_blocks);
 //Iso_MongoService.addMongo("_addObj_chainstate",_addObj2);
+//btoa= base64 encoding 
+//atob()= base64 decoding + JSON.parse(decoded)

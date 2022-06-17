@@ -48,7 +48,7 @@ class MongoService {
                 schema:chainstateDocs
             }]
 
-            //console.log(JSON.stringify(CollectionArr))
+            //console.log(JSON.stringify(CollectionArr,null,3 ))
 
             for(const index of CollectionArr){
 
@@ -57,7 +57,7 @@ class MongoService {
                     console.log(index.colName+" oluşturuldu");
                 }
                 else {
-                    console.log("Bu tablo zaten var.");
+                    console.log(index.colName+" isimli tablo zaten var.");
     
                 }
             }
@@ -99,12 +99,18 @@ class MongoService {
 }
 
 let Iso_MongoService = new MongoService();
-Iso_MongoService.Blockchain.addBlock({ amount: 150 });
 
-console.log(JSON.stringify(Iso_MongoService.Blockchain, null, 4));
+let BlockChainInstance = Iso_MongoService.Blockchain.addBlock({ amount: 150 });
+console.log(JSON.stringify(BlockChainInstance, null, 4));
 
-let block_Hash = Iso_MongoService.Blockchain.Blocks[1].Hash;
-let Lastblock_Hash = Iso_MongoService.Blockchain.Blocks[Iso_MongoService.Blockchain.Blocks.length - 1].PrevBlockHash;
+let Block_Encoded = btoa(JSON.stringify(BlockChainInstance[BlockChainInstance.length -1]));
+
+// let Block_Decoded = atob(Block_Encoded);
+// let a = JSON.parse(Block_Decoded);
+// console.log(a.Hash);
+
+let block_Hash = Block_Encoded;
+let Lastblock_Hash = BlockChainInstance[BlockChainInstance.length - 1].PrevBlockHash;
 
 let _addObj_blocks = {
     b: block_Hash,
@@ -115,7 +121,8 @@ let _addObj_chainstate = {
     B: Lastblock_Hash
 }
 
-Iso_MongoService.addMongo("blocks",_addObj_blocks);
+ Iso_MongoService.addMongo("blocks",_addObj_blocks);
 //Iso_MongoService.addMongo("_addObj_chainstate",_addObj2);
 
-
+//btoa= base64 encoding 
+//atob()= base64 decoding + JSON.parse(decoded)

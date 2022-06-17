@@ -42,7 +42,25 @@ var Blockchain = /** @class */ (function () {
         var prevBlock = this.Blocks[this.Blocks.length - 1];
         var newBlock = new Block(Date.now(), _data, prevBlock.Hash);
         this.Blocks.push(newBlock);
+        return this.Blocks;
     };
     return Blockchain;
 }());
 exports.Blockchain = Blockchain;
+var Transaction = /** @class */ (function () {
+    function Transaction() {
+        this.ID = []; //byte
+    }
+    return Transaction;
+}());
+var TxInput = /** @class */ (function () {
+    function TxInput() {
+        this.Txid = []; //byte Transaction'ın id'si.
+    }
+    return TxInput;
+}());
+var TxOutput = /** @class */ (function () {
+    function TxOutput() {
+    }
+    return TxOutput;
+}());
