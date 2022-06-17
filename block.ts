@@ -1,11 +1,9 @@
 import * as sha256JS from "crypto-js/sha256.js" // import CryptoJS = require('./index'); şeklinde atama yapıldığı için * as x şeklinde import etmek gerek.
-// import {EC} from "elliptic/lib/elliptic/ec/index.js" ecma5 ile yazıldığı için export {EC} değil module.exports = EC bu yüzden require ile atama gerekiyor.
+// import * as ECobj from "elliptic/lib/elliptic/ec/index.js";" ecma5 ile yazıldığı için export {EC} değil module.exports = EC bu yüzden require ile atama gerekiyor.
 // Yukarıdakilerin çalışması için type defination lazım olursa npm i @types/elliptic --save-dev şeklinde @types'ları indirmek gerek. 
-
-const EC = require("elliptic/lib/elliptic/ec/index.js");
+const EC = require("elliptic/lib/elliptic/ec/index")
 const SHA256 = sha256JS;
 const ec = new EC("secp256k1");
-
 
 class Block{
 

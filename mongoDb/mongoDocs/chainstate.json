@@ -1,0 +1,22 @@
+{
+    "validator": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "required": [
+                "c",
+                "B"
+            ],
+            "properties": {
+                "_id": {},
+                "c": {
+                    "bsonType":["string"],
+                    "description": "Bu alan boş geçilemez."
+                },
+                "B": {
+                    "bsonType":["string"],
+                    "description": "Bu alan boş geçilemez."
+                }
+            }
+        }
+    }
+}
