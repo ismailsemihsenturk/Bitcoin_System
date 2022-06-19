@@ -36,9 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+exports.MongoService = void 0;
 var block_1 = require("../block");
 var mongodb_1 = require("mongodb");
-var path_1 = require("path");
 var blockDocs = require("./mongoDocs/blocks.json");
 var chainstateDocs = require("./mongoDocs/chainstate.json");
 //import blockDocs from "./mongoDocs/blocks.json";
@@ -48,74 +48,102 @@ var MongoService = /** @class */ (function () {
         this.C_Blocks_Prop = blockDocs.validator.$jsonSchema.properties;
         this.Client = new mongodb_1.MongoClient("mongodb://localhost:27017");
         this.DbObject = new mongodb_1.Db(this.Client, this.DbName);
-        this.mongoDbInit = this.initiateMongoDB();
-        this.Blockchain = new block_1.Blockchain();
         // this.Collection_IsoCoin = this.DbObj.collection("Iso_Coin");
     }
     MongoService.prototype.initiateMongoDB = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var dbobj, CollectionArr, _a, _i, CollectionArr_1, index, error_1;
-            var _b, _c;
-            return __generator(this, function (_d) {
-                switch (_d.label) {
+            var block_exist, colBlocks, dbobj, CollectionArr, listCol, _i, CollectionArr_1, index, error_1;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        _d.trys.push([0, 9, , 10]);
+                        block_exist = false;
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 12, , 13]);
                         // Use connect method to connect to the server
                         return [4 /*yield*/, this.Client.connect()];
-                    case 1:
+                    case 2:
                         // Use connect method to connect to the server
-                        _d.sent();
+                        _a.sent();
                         console.log("Server'a bağlandı. ");
                         dbobj = this.Client.db(this.DbName);
-                        _b = {
-                            colName: "blocks"
-                        };
-                        return [4 /*yield*/, dbobj.collection("blocks").countDocuments()];
-                    case 2:
-                        _a = [(_b.colDocCount = _d.sent(),
-                                _b.schema = blockDocs,
-                                _b)];
-                        _c = {
-                            colName: "chainstate"
-                        };
-                        return [4 /*yield*/, dbobj.collection("chainstate").countDocuments()];
+                        CollectionArr = [{
+                                colName: "blocks",
+                                schema: blockDocs
+                            },
+                            {
+                                colName: "chainstate",
+                                schema: chainstateDocs
+                            }];
+                        return [4 /*yield*/, dbobj.listCollections().toArray()];
                     case 3:
-                        CollectionArr = _a.concat([(_c.colDocCount = _d.sent(),
-                                _c.schema = chainstateDocs,
-                                _c)]);
+                        listCol = (_a.sent()).map(function (n) { return n.name; });
                         _i = 0, CollectionArr_1 = CollectionArr;
-                        _d.label = 4;
+                        _a.label = 4;
                     case 4:
                         if (!(_i < CollectionArr_1.length)) return [3 /*break*/, 8];
                         index = CollectionArr_1[_i];
-                        if (!(index.colDocCount === 0)) return [3 /*break*/, 6];
+                        if (!!listCol.includes(index.colName)) return [3 /*break*/, 6];
                         return [4 /*yield*/, dbobj.createCollection(index.colName, index.schema)];
                     case 5:
-                        _d.sent();
+                        _a.sent();
                         console.log(index.colName + " oluşturuldu");
                         return [3 /*break*/, 7];
                     case 6:
                         console.log(index.colName + " isimli tablo zaten var.");
-                        _d.label = 7;
+                        index.colName === "blocks" ? block_exist = true :
+                            console.log(block_exist);
+                        _a.label = 7;
                     case 7:
                         _i++;
                         return [3 /*break*/, 4];
                     case 8:
-                        // this.mongoDbObjs(dbobj); 
-                        this.Client.close();
-                        return [3 /*break*/, 10];
+                        if (!block_exist) return [3 /*break*/, 10];
+                        return [4 /*yield*/, dbobj.collection("blocks").find().toArray()];
                     case 9:
-                        error_1 = _d.sent();
+                        colBlocks = _a.sent();
+                        console.log("neden: " + JSON.stringify(colBlocks));
+                        return [3 /*break*/, 11];
+                    case 10:
+                        colBlocks = [{
+                                Magic_no: "ISO1998",
+                                Blocksize: 0,
+                                Blockheader: {
+                                    version: 0,
+                                    prevBlockHash: "",
+                                    merkleRoot: "",
+                                    timestamp: Date.now(),
+                                    difficulty: 2,
+                                    nonce: 0
+                                },
+                                Transaction_counter: 0,
+                                transactions: [{
+                                        txID: "",
+                                        Vin: [{
+                                                Index: 0,
+                                                PrevTx: "",
+                                                ScriptSig: ""
+                                            }],
+                                        Vout: [{
+                                                Value: 0,
+                                                ScrriptPubKey: ""
+                                            }]
+                                    }]
+                            }];
+                        _a.label = 11;
+                    case 11:
+                        // collection içerisindeki bütün docs
+                        this.Client.close();
+                        return [2 /*return*/, colBlocks];
+                    case 12:
+                        error_1 = _a.sent();
                         console.log(error_1);
-                        return [3 /*break*/, 10];
-                    case 10: return [2 /*return*/, (0, path_1.resolve)("Server ayağa kaldırıldı.")];
+                        return [3 /*break*/, 13];
+                    case 13: return [2 /*return*/];
                 }
             });
         });
     };
-    // mongoDbObjs(_dbObj:Db){
-    //     // this.DbObject = _dbObj;
-    // }
     MongoService.prototype.addMongo = function (colName, _addObj) {
         return __awaiter(this, void 0, void 0, function () {
             var addObj, addResult;
@@ -163,24 +191,14 @@ var MongoService = /** @class */ (function () {
     };
     return MongoService;
 }());
+exports.MongoService = MongoService;
 var Iso_MongoService = new MongoService();
-var BlockChainInstance = Iso_MongoService.Blockchain.addBlock({ amount: 150 });
-console.log(JSON.stringify(BlockChainInstance, null, 4));
-var Block_Encoded = btoa(JSON.stringify(BlockChainInstance[BlockChainInstance.length - 1]));
+var BlockChainInstance = new block_1.Blockchain();
+var MyWallet = new block_1.Wallet();
+// ------------------------------------------------------------------------
+//btoa= base64 encoding
+//atob()= base64 decoding + JSON.parse(decoded)
+//new Blob([]) = byte size
 // let Block_Decoded = atob(Block_Encoded);
 // let a = JSON.parse(Block_Decoded);
 // console.log(a.Hash);
-var block_Hash = Block_Encoded;
-var Lastblock_Hash = BlockChainInstance[BlockChainInstance.length - 1].PrevBlockHash;
-var _addObj_blocks = {
-    b: block_Hash,
-    l: Lastblock_Hash
-};
-var _addObj_chainstate = {
-    c: block_Hash,
-    B: Lastblock_Hash
-};
-Iso_MongoService.addMongo("blocks", _addObj_blocks);
-//Iso_MongoService.addMongo("_addObj_chainstate",_addObj2);
-//btoa= base64 encoding 
-//atob()= base64 decoding + JSON.parse(decoded)

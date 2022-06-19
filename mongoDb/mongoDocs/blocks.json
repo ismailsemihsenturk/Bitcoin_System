@@ -1,20 +1,45 @@
- {
+{
     "validator": {
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "b",
-                "l"              
+                "Magic_no",
+                "Blocksize",
+                "Blockheader",
+                "Transaction_counter",
+                "transactions"
             ],
             "properties": {
                 "_id": {},
-                "b": {
-                    "bsonType":["string"],
-                    "description": "Bu alan boş geçilemez."
+                "Magic_no": {
+                    "bsonType": [
+                        "string"
+                    ],                   
+                    "description": "Hangi protokolün kullanılacağına belirtmek için bir belirteç. Buradakini ben uydurdum."
                 },
-                "l": {
-                    "bsonType":["string"],
-                    "description": "Bu alan boş geçilemez."
+                "Blocksize": {
+                    "bsonType": [
+                        "int"
+                    ],
+                    "description": "Bloğun byte tipinden değeri."
+                },
+                "Blockheader": {
+                    "bsonType": [
+                        "object"
+                    ],
+                    "description": "Block Hash'i hesaplamak için gereken veriler."
+                },
+                "Transaction_counter": {
+                    "bsonType": [
+                        "int"
+                    ],
+                    "description": "Blok içerisindeki transaction adeti."
+                },
+                "transactions": {
+                    "bsonType": [
+                        "array"
+                    ],
+                    "description": "Blok içerisindeki transactionların listesi."
                 }
             }
         }
