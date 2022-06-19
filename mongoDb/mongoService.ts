@@ -1,4 +1,4 @@
-import { Blockchain, Wallet } from "../block";
+import { Block, Blockchain, Wallet } from "../block";
 import { AbstractCursor, AggregationCursor, Collection, CollectionInfo, Db, MongoClient, UpdateResult } from "mongodb";
 import { resolve } from "path";
 import { callbackify } from "util";
@@ -63,7 +63,7 @@ class MongoService {
             }
 
             if (block_exist) {
-                colBlocks = await dbobj.collection("blocks").find().toArray();
+                colBlocks = await dbobj.collection("blocks").find().sort({ $natural: -1 }).limit(1).toArray(); // reverse en son veri en üstte olacak.
                 console.log("neden: "+ JSON.stringify(colBlocks))
             }
             else {
@@ -111,6 +111,8 @@ class MongoService {
     async addMongo(colName: string, _addObj: any) {
         let addObj = this.DbObject;
         const addResult = await addObj.collection(colName).insertOne(_addObj);
+        
+        BlockChainInstance.addBlock(_addObj);
     }
 
     async updateMongo(colName: string, _updateFilter: any, _updateObj: any) {

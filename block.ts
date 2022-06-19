@@ -146,7 +146,7 @@ class Blockchain implements IBlockStructure {
         console.log("block: " + JSON.stringify(this.Blocks[this.Blocks.length -1], null, 5))
     }
 
-    addBlock(_data: object) {
+    addBlock(_data: Block) {
         // let prevBlock = this.Blocks[this.Blocks.length - 1];
         // let newBlock = new Block(Date.now(), _data, prevBlock.Hash);
         // this.Blocks.push(newBlock);
