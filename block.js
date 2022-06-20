@@ -60,23 +60,15 @@ var Block = /** @class */ (function () {
             merkleObj[i] = this.transactions[i].txID;
         }
         this.Blockheader.merkleRoot = SHA256(JSON.stringify(merkleObj)).toString();
-        if (this.Blockheader.prevBlockHash === "ali") {
+        if (this.Blockheader.prevBlockHash === "") {
             this.getHash();
         }
         return SHA256(JSON.stringify(_blockheader)).toString();
     };
     Block.prototype.getHash = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var str;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0: return [4 /*yield*/, this.MongoDb_Service.getHash()];
-                    case 1:
-                        str = _a.sent();
-                        return [2 /*return*/];
-                }
-            });
-        });
+        var str = this.MongoDb_Service.getHash();
+        this.Blockheader.prevBlockHash = str.substring(1, str.length - 1);
+        // console.log("prev: "+this.Blockheader.prevBlockHash)
     };
     Block.prototype.mineBlock = function () {
         while (this.Hash.substring(0, this.Blockheader.difficulty) !== Array(this.Blockheader.difficulty + 1).join("0")) {
@@ -88,6 +80,7 @@ var Block = /** @class */ (function () {
         var blockSizeStr = JSON.stringify(this.Magic_no) + JSON.stringify(this.Blockheader) + JSON.stringify(this.Transaction_counter) + JSON.stringify(this.transactions);
         this.Blocksize = blockSizeStr.length;
         console.log("prev: " + this.Blockheader.prevBlockHash);
+        console.log("prev2: " + JSON.stringify(this.Blockheader));
         this.MongoDb_Service.addMongo_Blocks(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions);
         this.MongoDb_Service.addMongo_Chainstate(this.Blockheader.prevBlockHash, this.Hash);
     };
@@ -137,6 +130,7 @@ var Blockchain = /** @class */ (function () {
             for (var i = 0; i < _addObj.length; i++) {
                 this.Blocks.push(new Block(_addObj[i].Blocksize, _addObj[i].Blockheader, _addObj[i].Transaction_counter, _addObj[i].transactions));
             }
+            console.log((this.Blocks));
             // Ramdekileri aldıktan sonra kendi ekleyeceğin bloğu minela.
             this.Blocks[this.Blocks.length - 1].mineBlock();
         }

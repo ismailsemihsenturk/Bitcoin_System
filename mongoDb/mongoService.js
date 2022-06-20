@@ -61,7 +61,7 @@ var MongoService = /** @class */ (function () {
                         block_exist = false;
                         _d.label = 1;
                     case 1:
-                        _d.trys.push([1, 14, , 15]);
+                        _d.trys.push([1, 15, , 16]);
                         // Use connect method to connect to the server
                         return [4 /*yield*/, this.Client.connect()];
                     case 2:
@@ -109,10 +109,13 @@ var MongoService = /** @class */ (function () {
                     case 9:
                         _i++;
                         return [3 /*break*/, 6];
-                    case 10:
-                        if (!block_exist) return [3 /*break*/, 12];
-                        return [4 /*yield*/, dbobj.collection("blocks").find().toArray()];
+                    case 10: return [4 /*yield*/, dbobj.collection("chainstate").find().toArray()];
                     case 11:
+                        HashObj = _d.sent();
+                        HashStr = JSON.stringify(HashObj[HashObj.length - 1].Hash);
+                        if (!block_exist) return [3 /*break*/, 13];
+                        return [4 /*yield*/, dbobj.collection("blocks").find().toArray()];
+                    case 12:
                         block_docs = _d.sent();
                         blockStructure = block_docs;
                         addBlocktoStructure = [];
@@ -129,7 +132,7 @@ var MongoService = /** @class */ (function () {
                         this.Client.close();
                         blockStructure.push(addBlocktoStructure[0]);
                         return [2 /*return*/, blockStructure];
-                    case 12:
+                    case 13:
                         console.log("genesis'e geldi");
                         this.Client.close();
                         return [2 /*return*/, [{
@@ -146,14 +149,14 @@ var MongoService = /** @class */ (function () {
                                     Transaction_counter: TxInstance.length,
                                     transactions: JSON.parse(JSON.stringify(TxInstance))
                                 }]];
-                    case 13:
-                        this.Client.close();
-                        return [3 /*break*/, 15];
                     case 14:
+                        this.Client.close();
+                        return [3 /*break*/, 16];
+                    case 15:
                         error_1 = _d.sent();
                         console.log(error_1);
-                        return [3 /*break*/, 15];
-                    case 15: return [2 /*return*/, [{
+                        return [3 /*break*/, 16];
+                    case 16: return [2 /*return*/, [{
                                 Magic_no: "ISO1998",
                                 Blocksize: 0,
                                 Blockheader: {
@@ -209,20 +212,7 @@ var MongoService = /** @class */ (function () {
         });
     };
     MongoService.prototype.getHash = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var dbobj, HashObj, HashStr;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        dbobj = this.Client.db(this.DbName);
-                        return [4 /*yield*/, dbobj.collection("chainstate").find().toArray()];
-                    case 1:
-                        HashObj = _a.sent();
-                        HashStr = JSON.stringify(HashObj[HashObj.length - 1].Hash);
-                        return [2 /*return*/, HashStr];
-                }
-            });
-        });
+        return HashStr;
     };
     return MongoService;
 }());
@@ -235,6 +225,8 @@ var BlockChainInstance;
 var TxInstance = [];
 var In_TxInstance = [(new block_1.TxInput(-1, -1, "Coinbase Tx"))];
 var Out_TxInstance = [(new block_1.TxOutput(100000, "Miner Public Key"))];
+var HashObj;
+var HashStr;
 var colBlocks = [{
         Magic_no: "ISO1998",
         Blocksize: 0,

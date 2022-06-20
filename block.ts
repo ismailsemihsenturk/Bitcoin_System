@@ -94,9 +94,9 @@ class Block implements IBlockStructure {
         return SHA256(JSON.stringify(_blockheader)).toString();
     }
 
-    async getHash() {
-        let str = await this.MongoDb_Service.getHash();
-        this.Blockheader.prevBlockHash = str.substring(1,str.length-1)
+    getHash() {
+        let str = this.MongoDb_Service.getHash();
+        this.Blockheader.prevBlockHash = str.substring(1, str.length - 1)
         // console.log("prev: "+this.Blockheader.prevBlockHash)
     }
 
@@ -114,8 +114,6 @@ class Block implements IBlockStructure {
         let blockSizeStr = JSON.stringify(this.Magic_no) + JSON.stringify(this.Blockheader) + JSON.stringify(this.Transaction_counter) + JSON.stringify(this.transactions);
         this.Blocksize = blockSizeStr.length
 
-
-        console.log("prev: "+ this.Blockheader.prevBlockHash )
         this.MongoDb_Service.addMongo_Blocks(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions);
         this.MongoDb_Service.addMongo_Chainstate(this.Blockheader.prevBlockHash, this.Hash)
 
@@ -165,7 +163,7 @@ class Blockchain implements IBlockStructure {
         const MongoDb_Service = new MongoService();
         let docs_Blocks = await MongoDb_Service.initiateMongoDB();
 
-        if (docs_Blocks[docs_Blocks.length-1].Blockheader.prevBlockHash ==="genesis") { this.Genesis = true; }
+        if (docs_Blocks[docs_Blocks.length - 1].Blockheader.prevBlockHash === "genesis") { this.Genesis = true; }
 
         for (let i = 0; i < docs_Blocks.length; i++) {
             this.Blocksize = Number(JSON.stringify(docs_Blocks[i].Blocksize));
@@ -190,7 +188,7 @@ class Blockchain implements IBlockStructure {
         if (this.Genesis) {
             this.Blocks.push(new Block(_addObj[0].Blocksize, _addObj[0].Blockheader, _addObj[0].Transaction_counter, _addObj[0].transactions));
 
-           // console.log("createGenesisBlock: " + JSON.stringify(this.Blocks[this.Blocks.length - 1], null, 5))
+            // console.log("createGenesisBlock: " + JSON.stringify(this.Blocks[this.Blocks.length - 1], null, 5))
 
             this.Blocks[this.Blocks.length - 1].mineBlock()
 
@@ -199,7 +197,7 @@ class Blockchain implements IBlockStructure {
             for (let i = 0; i < _addObj.length; i++) {
                 this.Blocks.push(new Block(_addObj[i].Blocksize, _addObj[i].Blockheader, _addObj[i].Transaction_counter, _addObj[i].transactions));
             }
-
+            console.log((this.Blocks))
             // Ramdekileri aldıktan sonra kendi ekleyeceğin bloğu minela.
             this.Blocks[this.Blocks.length - 1].mineBlock()
         }

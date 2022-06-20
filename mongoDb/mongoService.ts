@@ -71,6 +71,9 @@ class MongoService {
                 }
             }
 
+            HashObj = await dbobj.collection("chainstate").find().toArray();
+            HashStr = JSON.stringify(HashObj[HashObj.length - 1].Hash);
+
             if (block_exist) { // DB check
 
                 block_docs = await dbobj.collection("blocks").find().toArray();
@@ -157,16 +160,12 @@ class MongoService {
             prevHash: _prevHash,
             Hash: _hash
         }
-        console.log("prev mongo: "+addObj.prevHash);
+        console.log("prev mongo: " + addObj.prevHash);
         const addResult = await this.DbObject.collection("chainstate").insertOne(addObj);
     }
 
-    async getHash(){
-
-        let dbobj = this.Client.db(this.DbName);
-        let HashObj = await dbobj.collection("chainstate").find().toArray();
-        let HashStr = JSON.stringify(HashObj[HashObj.length -1].Hash);
-        return  HashStr;
+    getHash() {
+        return HashStr;
     }
 
     // async updateMongo(colName: string, _updateFilter: any, _updateObj: any) {
@@ -193,6 +192,8 @@ let BlockChainInstance: Blockchain;
 let TxInstance: Transaction[] = [];
 let In_TxInstance: TxInput[] = [(new TxInput(-1, -1, "Coinbase Tx"))];
 let Out_TxInstance: TxOutput[] = [(new TxOutput(100000, "Miner Public Key"))];
+let HashObj;
+let HashStr;
 
 let colBlocks = [{
     Magic_no: "ISO1998",
