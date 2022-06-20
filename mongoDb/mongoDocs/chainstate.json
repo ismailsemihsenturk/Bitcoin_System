@@ -3,16 +3,16 @@
         "$jsonSchema": {
             "bsonType": "object",
             "required": [
-                "c",
-                "B"
+                "prevHash",
+                "Hash"
             ],
             "properties": {
                 "_id": {},
-                "c": {
+                "prevHash": {
                     "bsonType":["string"],
                     "description": "Bu alan boş geçilemez."
                 },
-                "B": {
+                "Hash": {
                     "bsonType":["string"],
                     "description": "Bu alan boş geçilemez."
                 }

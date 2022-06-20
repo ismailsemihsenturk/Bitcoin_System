@@ -39,6 +39,7 @@ exports.__esModule = true;
 exports.MongoService = void 0;
 var block_1 = require("../block");
 var mongodb_1 = require("mongodb");
+var crypto_js_1 = require("crypto-js");
 var blockDocs = require("./mongoDocs/blocks.json");
 var chainstateDocs = require("./mongoDocs/chainstate.json");
 //import blockDocs from "./mongoDocs/blocks.json";
@@ -52,60 +53,107 @@ var MongoService = /** @class */ (function () {
     }
     MongoService.prototype.initiateMongoDB = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var block_exist, colBlocks, dbobj, CollectionArr, listCol, _i, CollectionArr_1, index, error_1;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var block_exist, block_docs, dbobj, CollectionArr, _a, listCol, _i, CollectionArr_1, index, blockStructure, addBlocktoStructure, error_1;
+            var _b, _c;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
                     case 0:
                         block_exist = false;
-                        _a.label = 1;
+                        _d.label = 1;
                     case 1:
-                        _a.trys.push([1, 12, , 13]);
+                        _d.trys.push([1, 14, , 15]);
                         // Use connect method to connect to the server
                         return [4 /*yield*/, this.Client.connect()];
                     case 2:
                         // Use connect method to connect to the server
-                        _a.sent();
+                        _d.sent();
                         console.log("Server'a bağlandı. ");
                         dbobj = this.Client.db(this.DbName);
-                        CollectionArr = [{
-                                colName: "blocks",
-                                schema: blockDocs
-                            },
-                            {
-                                colName: "chainstate",
-                                schema: chainstateDocs
-                            }];
-                        return [4 /*yield*/, dbobj.listCollections().toArray()];
+                        _b = {
+                            colName: "blocks",
+                            schema: blockDocs
+                        };
+                        return [4 /*yield*/, dbobj.collection("blocks").distinct('_id')];
                     case 3:
-                        listCol = (_a.sent()).map(function (n) { return n.name; });
-                        _i = 0, CollectionArr_1 = CollectionArr;
-                        _a.label = 4;
+                        _a = [(_b.colCount = (_d.sent()).length,
+                                _b)];
+                        _c = {
+                            colName: "chainstate",
+                            schema: chainstateDocs
+                        };
+                        return [4 /*yield*/, dbobj.collection("chainstate").distinct('_id')];
                     case 4:
-                        if (!(_i < CollectionArr_1.length)) return [3 /*break*/, 8];
-                        index = CollectionArr_1[_i];
-                        if (!!listCol.includes(index.colName)) return [3 /*break*/, 6];
-                        return [4 /*yield*/, dbobj.createCollection(index.colName, index.schema)];
+                        CollectionArr = _a.concat([(_c.colCount = (_d.sent()).length,
+                                _c)]);
+                        return [4 /*yield*/, dbobj.listCollections().toArray()];
                     case 5:
-                        _a.sent();
-                        console.log(index.colName + " oluşturuldu");
-                        return [3 /*break*/, 7];
+                        listCol = (_d.sent()).map(function (n) { return n.name; });
+                        _i = 0, CollectionArr_1 = CollectionArr;
+                        _d.label = 6;
                     case 6:
-                        console.log(index.colName + " isimli tablo zaten var.");
-                        index.colName === "blocks" ? block_exist = true :
-                            console.log(block_exist);
-                        _a.label = 7;
+                        if (!(_i < CollectionArr_1.length)) return [3 /*break*/, 10];
+                        index = CollectionArr_1[_i];
+                        if (!!listCol.includes(index.colName)) return [3 /*break*/, 8];
+                        return [4 /*yield*/, dbobj.createCollection(index.colName, index.schema)];
                     case 7:
-                        _i++;
-                        return [3 /*break*/, 4];
+                        _d.sent();
+                        console.log(index.colName + " oluşturuldu");
+                        return [3 /*break*/, 9];
                     case 8:
-                        if (!block_exist) return [3 /*break*/, 10];
-                        return [4 /*yield*/, dbobj.collection("blocks").find().toArray()];
+                        console.log(index.colName + " isimli tablo zaten var.");
+                        if (index.colName === "blocks" && index.colCount !== 0) {
+                            block_exist = true;
+                        }
+                        console.log(block_exist);
+                        _d.label = 9;
                     case 9:
-                        colBlocks = _a.sent();
-                        console.log("neden: " + JSON.stringify(colBlocks));
-                        return [3 /*break*/, 11];
+                        _i++;
+                        return [3 /*break*/, 6];
                     case 10:
-                        colBlocks = [{
+                        if (!block_exist) return [3 /*break*/, 12];
+                        return [4 /*yield*/, dbobj.collection("blocks").find().toArray()];
+                    case 11:
+                        block_docs = _d.sent();
+                        blockStructure = block_docs;
+                        addBlocktoStructure = [];
+                        addBlocktoStructure[0].Blocksize = 0;
+                        addBlocktoStructure[0].Blockheader.version = 0;
+                        addBlocktoStructure[0].Blockheader.prevBlockHash = "ali";
+                        addBlocktoStructure[0].Blockheader.merkleRoot = "";
+                        addBlocktoStructure[0].Blockheader.timestamp = Date.now();
+                        addBlocktoStructure[0].Blockheader.difficulty = 2;
+                        addBlocktoStructure[0].Blockheader.nonce = 0;
+                        addBlocktoStructure[0].Transaction_counter = TxInstance.length;
+                        addBlocktoStructure[0].transactions = JSON.parse(JSON.stringify(TxInstance));
+                        console.log("blokstructure: " + JSON.stringify(blockStructure[0]));
+                        this.Client.close();
+                        blockStructure.push(addBlocktoStructure[0]);
+                        return [2 /*return*/, blockStructure];
+                    case 12:
+                        console.log("genesis'e geldi");
+                        this.Client.close();
+                        return [2 /*return*/, [{
+                                    Magic_no: "ISO1998",
+                                    Blocksize: 0,
+                                    Blockheader: {
+                                        version: 0,
+                                        prevBlockHash: "genesis",
+                                        merkleRoot: "",
+                                        timestamp: Date.now(),
+                                        difficulty: 2,
+                                        nonce: 0
+                                    },
+                                    Transaction_counter: TxInstance.length,
+                                    transactions: JSON.parse(JSON.stringify(TxInstance))
+                                }]];
+                    case 13:
+                        this.Client.close();
+                        return [3 /*break*/, 15];
+                    case 14:
+                        error_1 = _d.sent();
+                        console.log(error_1);
+                        return [3 /*break*/, 15];
+                    case 15: return [2 /*return*/, [{
                                 Magic_no: "ISO1998",
                                 Blocksize: 0,
                                 Blockheader: {
@@ -116,42 +164,24 @@ var MongoService = /** @class */ (function () {
                                     difficulty: 2,
                                     nonce: 0
                                 },
-                                Transaction_counter: 0,
-                                transactions: [{
-                                        txID: "",
-                                        Vin: [{
-                                                Index: 0,
-                                                PrevTx: "",
-                                                ScriptSig: ""
-                                            }],
-                                        Vout: [{
-                                                Value: 0,
-                                                ScrriptPubKey: ""
-                                            }]
-                                    }]
-                            }];
-                        _a.label = 11;
-                    case 11:
-                        // collection içerisindeki bütün docs
-                        this.Client.close();
-                        return [2 /*return*/, colBlocks];
-                    case 12:
-                        error_1 = _a.sent();
-                        console.log(error_1);
-                        return [3 /*break*/, 13];
-                    case 13: return [2 /*return*/];
+                                Transaction_counter: TxInstance.length,
+                                transactions: JSON.parse(JSON.stringify(TxInstance))
+                            }]];
                 }
             });
         });
     };
-    MongoService.prototype.addMongo = function (colName, _addObj) {
+    MongoService.prototype.addMongo_Blocks = function (_Blocksize, _Blockheader, _Transaction_counter, _transactions) {
         return __awaiter(this, void 0, void 0, function () {
-            var addObj, addResult;
+            var addResult;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        addObj = this.DbObject;
-                        return [4 /*yield*/, addObj.collection(colName).insertOne(_addObj)];
+                        colBlocks[colBlocks.length - 1].Blocksize = _Blocksize;
+                        colBlocks[colBlocks.length - 1].Blockheader = _Blockheader;
+                        colBlocks[colBlocks.length - 1].Transaction_counter = _Transaction_counter;
+                        colBlocks[colBlocks.length - 1].transactions = _transactions;
+                        return [4 /*yield*/, this.DbObject.collection("blocks").insertOne(colBlocks[colBlocks.length - 1])];
                     case 1:
                         addResult = _a.sent();
                         return [2 /*return*/];
@@ -159,32 +189,37 @@ var MongoService = /** @class */ (function () {
             });
         });
     };
-    MongoService.prototype.updateMongo = function (colName, _updateFilter, _updateObj) {
+    MongoService.prototype.addMongo_Chainstate = function (_prevHash, _hash) {
         return __awaiter(this, void 0, void 0, function () {
-            var updateObj, updateResult;
+            var addObj, addResult;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        updateObj = this.DbObject;
-                        return [4 /*yield*/, updateObj.collection(colName).updateOne(_updateFilter, _updateObj)];
+                        addObj = {
+                            prevHash: _prevHash,
+                            Hash: _hash
+                        };
+                        console.log("prev mongo: " + addObj.prevHash);
+                        return [4 /*yield*/, this.DbObject.collection("chainstate").insertOne(addObj)];
                     case 1:
-                        updateResult = _a.sent();
+                        addResult = _a.sent();
                         return [2 /*return*/];
                 }
             });
         });
     };
-    MongoService.prototype.deleteMongo = function (colName, _deleteObj) {
+    MongoService.prototype.getHash = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var deleteObj, deleteResult;
+            var dbobj, HashObj, HashStr;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        deleteObj = this.DbObject;
-                        return [4 /*yield*/, deleteObj.collection(colName).deleteOne(_deleteObj)];
+                        dbobj = this.Client.db(this.DbName);
+                        return [4 /*yield*/, dbobj.collection("chainstate").find().toArray()];
                     case 1:
-                        deleteResult = _a.sent();
-                        return [2 /*return*/];
+                        HashObj = _a.sent();
+                        HashStr = JSON.stringify(HashObj[HashObj.length - 1].Hash);
+                        return [2 /*return*/, HashStr];
                 }
             });
         });
@@ -192,9 +227,67 @@ var MongoService = /** @class */ (function () {
     return MongoService;
 }());
 exports.MongoService = MongoService;
-var Iso_MongoService = new MongoService();
-var BlockChainInstance = new block_1.Blockchain();
-var MyWallet = new block_1.Wallet();
+// -------------VARIABLES-------------
+var MyWallet;
+var Wallet_Arr;
+var Iso_MongoService;
+var BlockChainInstance;
+var TxInstance = [];
+var In_TxInstance = [(new block_1.TxInput(-1, -1, "Coinbase Tx"))];
+var Out_TxInstance = [(new block_1.TxOutput(100000, "Miner Public Key"))];
+var colBlocks = [{
+        Magic_no: "ISO1998",
+        Blocksize: 0,
+        Blockheader: {
+            version: 0,
+            prevBlockHash: "",
+            merkleRoot: "",
+            timestamp: Date.now(),
+            difficulty: 2,
+            nonce: 0
+        },
+        Transaction_counter: 0,
+        transactions: [{
+                txID: "",
+                Vin: [{
+                        Index: 0,
+                        PrevTx: "",
+                        ScriptSig: ""
+                    }],
+                Vout: [{
+                        Value: 0,
+                        ScrriptPubKey: ""
+                    }]
+            }]
+    }];
+function coinbaseTx() {
+    return __awaiter(this, void 0, void 0, function () {
+        var TxHash;
+        return __generator(this, function (_a) {
+            TxHash = (0, crypto_js_1.SHA256)(JSON.stringify(In_TxInstance) + JSON.stringify(Out_TxInstance)).toString();
+            TxInstance.push(new block_1.Transaction(TxHash, In_TxInstance, Out_TxInstance));
+            return [2 /*return*/];
+        });
+    });
+}
+function main() {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    Iso_MongoService = new MongoService();
+                    MyWallet = new block_1.Wallet();
+                    Wallet_Arr = MyWallet.WalletInstance(); //Wallet_Arr[0].PRIVATE_KEY
+                    return [4 /*yield*/, coinbaseTx()];
+                case 1:
+                    _a.sent();
+                    BlockChainInstance = new block_1.Blockchain();
+                    return [2 /*return*/];
+            }
+        });
+    });
+}
+main();
 // ------------------------------------------------------------------------
 //btoa= base64 encoding
 //atob()= base64 decoding + JSON.parse(decoded)

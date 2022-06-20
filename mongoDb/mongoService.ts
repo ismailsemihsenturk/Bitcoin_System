@@ -1,7 +1,10 @@
-import { Block, Blockchain, Wallet } from "../block";
+import { Block, Blockchain, Wallet, Transaction, TxInput, TxOutput, IBlockStructure, IBlockStructureType } from "../block";
 import { AbstractCursor, AggregationCursor, Collection, CollectionInfo, Db, MongoClient, UpdateResult } from "mongodb";
 import { resolve } from "path";
 import { callbackify } from "util";
+import { mainModule } from "process";
+import { SHA256 } from "crypto-js";
+import { type } from "os";
 const blockDocs = require("./mongoDocs/blocks.json");
 const chainstateDocs = require("./mongoDocs/chainstate.json");
 //import blockDocs from "./mongoDocs/blocks.json";
@@ -23,10 +26,11 @@ class MongoService {
 
     }
 
-    async initiateMongoDB() {
+    async initiateMongoDB(): Promise<IBlockStructureType> {
 
         let block_exist = false;
-        let colBlocks;
+        let block_docs;
+
 
 
         try {
@@ -37,11 +41,13 @@ class MongoService {
 
             let CollectionArr = [{
                 colName: "blocks",
-                schema: blockDocs
+                schema: blockDocs,
+                colCount: (await dbobj.collection("blocks").distinct('_id')).length
             },
             {
                 colName: "chainstate",
-                schema: chainstateDocs
+                schema: chainstateDocs,
+                colCount: (await dbobj.collection("chainstate").distinct('_id')).length
             }]
 
 
@@ -57,83 +63,194 @@ class MongoService {
                 }
                 else {
                     console.log(index.colName + " isimli tablo zaten var.");
-                    index.colName === "blocks" ? block_exist = true :
+
+                    if (index.colName === "blocks" && index.colCount !== 0) {
+                        block_exist = true;
+                    }
                     console.log(block_exist)
                 }
             }
 
-            if (block_exist) {
-                colBlocks = await dbobj.collection("blocks").find().sort({ $natural: -1 }).limit(1).toArray(); // reverse en son veri en üstte olacak.
-                console.log("neden: "+ JSON.stringify(colBlocks))
+            if (block_exist) { // DB check
+
+                block_docs = await dbobj.collection("blocks").find().toArray();
+                //colBlocks = await dbobj.collection("blocks").find().sort({ $natural: -1 }).limit(1).toArray(); 
+                // reverse en son veri en üstte olacak.
+
+                let blockStructure: IBlockStructure[] = block_docs;
+                let addBlocktoStructure: IBlockStructure[] = [];
+
+                addBlocktoStructure[0].Blocksize = 0;
+                addBlocktoStructure[0].Blockheader.version = 0;
+                addBlocktoStructure[0].Blockheader.prevBlockHash = "ali";
+                addBlocktoStructure[0].Blockheader.merkleRoot = "";
+                addBlocktoStructure[0].Blockheader.timestamp = Date.now();
+                addBlocktoStructure[0].Blockheader.difficulty = 2;
+                addBlocktoStructure[0].Blockheader.nonce = 0;
+                addBlocktoStructure[0].Transaction_counter = TxInstance.length;
+                addBlocktoStructure[0].transactions = JSON.parse(JSON.stringify(TxInstance));
+
+                console.log("blokstructure: " + JSON.stringify(blockStructure[0]));
+
+                this.Client.close();
+                blockStructure.push(addBlocktoStructure[0])
+                return blockStructure
+
             }
-            else {
-                colBlocks = [{
+            else { //Genesis
+
+                console.log("genesis'e geldi");
+                this.Client.close();
+                return [{
                     Magic_no: "ISO1998",
                     Blocksize: 0,
                     Blockheader: {
                         version: 0,
-                        prevBlockHash: "",
+                        prevBlockHash: "genesis",
                         merkleRoot: "",
                         timestamp: Date.now(),
                         difficulty: 2,
                         nonce: 0
                     },
-                    Transaction_counter: 0,
-                    transactions: [{
-                        txID: "",
-                        Vin: [{
-                            Index: 0,
-                            PrevTx: "",
-                            ScriptSig: ""
-                        }],
-                        Vout: [{
-                            Value: 0,
-                            ScrriptPubKey: ""
-                        }]
-                    }]
+                    Transaction_counter: TxInstance.length,
+                    transactions: JSON.parse(JSON.stringify(TxInstance))
                 }]
             }
 
-
-            // collection içerisindeki bütün docs
-
-
             this.Client.close();
-            return colBlocks
-
-        } catch (error) {
+        }
+        catch (error) {
             console.log(error);
         }
 
+        return [{ //block exist true
+            Magic_no: "ISO1998",
+            Blocksize: 0,
+            Blockheader: {
+                version: 0,
+                prevBlockHash: "",
+                merkleRoot: "",
+                timestamp: Date.now(),
+                difficulty: 2,
+                nonce: 0
+            },
+            Transaction_counter: TxInstance.length,
+            transactions: JSON.parse(JSON.stringify(TxInstance))
+        }]
+
     }
 
 
-    async addMongo(colName: string, _addObj: any) {
-        let addObj = this.DbObject;
-        const addResult = await addObj.collection(colName).insertOne(_addObj);
-        
-        BlockChainInstance.addBlock(_addObj);
+    async addMongo_Blocks(_Blocksize, _Blockheader, _Transaction_counter, _transactions) {
+
+        colBlocks[colBlocks.length - 1].Blocksize = _Blocksize;
+        colBlocks[colBlocks.length - 1].Blockheader = _Blockheader;
+        colBlocks[colBlocks.length - 1].Transaction_counter = _Transaction_counter;
+        colBlocks[colBlocks.length - 1].transactions = _transactions;
+
+        const addResult = await this.DbObject.collection("blocks").insertOne(colBlocks[colBlocks.length - 1]);
     }
 
-    async updateMongo(colName: string, _updateFilter: any, _updateObj: any) {
-        let updateObj = this.DbObject;
-        const updateResult = await updateObj.collection(colName).updateOne(_updateFilter, _updateObj);
-        // const updateResult2 = await this.Collection_IsoCoin.updateOne(_updateFilter,_updateObj);
+    async addMongo_Chainstate(_prevHash, _hash) {
+
+        let addObj = {
+            prevHash: _prevHash,
+            Hash: _hash
+        }
+        console.log("prev mongo: "+addObj.prevHash);
+        const addResult = await this.DbObject.collection("chainstate").insertOne(addObj);
     }
 
-    async deleteMongo(colName: string, _deleteObj: any) {
-        let deleteObj = this.DbObject;
-        const deleteResult = await deleteObj.collection(colName).deleteOne(_deleteObj);
-        // const deleteResult = await this.Collection_IsoCoin.deleteOne(_deleteObj);
+    async getHash(){
+
+        let dbobj = this.Client.db(this.DbName);
+        let HashObj = await dbobj.collection("chainstate").find().toArray();
+        let HashStr = JSON.stringify(HashObj[HashObj.length -1].Hash);
+        return  HashStr;
     }
+
+    // async updateMongo(colName: string, _updateFilter: any, _updateObj: any) {
+    //     let updateObj = this.DbObject;
+    //     const updateResult = await updateObj.collection(colName).updateOne(_updateFilter, _updateObj);
+
+    // }
+
+    // async deleteMongo(colName: string, _deleteObj: any) {
+    //     let deleteObj = this.DbObject;
+    //     const deleteResult = await deleteObj.collection(colName).deleteOne(_deleteObj);
+
+    // }
 
 
 
 }
 
-let Iso_MongoService = new MongoService();
-let BlockChainInstance = new Blockchain();
-let MyWallet = new Wallet();
+// -------------VARIABLES-------------
+let MyWallet: Wallet;
+let Wallet_Arr;
+let Iso_MongoService;
+let BlockChainInstance: Blockchain;
+let TxInstance: Transaction[] = [];
+let In_TxInstance: TxInput[] = [(new TxInput(-1, -1, "Coinbase Tx"))];
+let Out_TxInstance: TxOutput[] = [(new TxOutput(100000, "Miner Public Key"))];
+
+let colBlocks = [{
+    Magic_no: "ISO1998",
+    Blocksize: 0,
+    Blockheader: {
+        version: 0,
+        prevBlockHash: "",
+        merkleRoot: "",
+        timestamp: Date.now(),
+        difficulty: 2,
+        nonce: 0
+    },
+    Transaction_counter: 0,
+    transactions: [{
+        txID: "",
+        Vin: [{
+            Index: 0,
+            PrevTx: "",
+            ScriptSig: ""
+        }],
+        Vout: [{
+            Value: 0,
+            ScrriptPubKey: ""
+        }]
+    }]
+}];
+
+
+async function coinbaseTx() {
+    // Coinbase Transaction reward ödülün taşır. Bundan dolayı:
+
+    // ------- TX INPUT--------
+    // Bir önceki transaction içindeki output'un index değeri yoktur.
+    // Bir önceki tx hash'i yoktur.
+    // ScripSig'de herhangi bir veri vardır.
+
+    // ------- TX OUTPUT--------
+    // Value: block ödülüdür. 
+    // ScriptPubKey block'u minelayan kullanıcının public key'idir.
+
+    let TxHash = SHA256(JSON.stringify(In_TxInstance) + JSON.stringify(Out_TxInstance)).toString();
+    TxInstance.push(new Transaction(TxHash, In_TxInstance, Out_TxInstance));
+
+}
+async function main() {
+
+    Iso_MongoService = new MongoService();
+    MyWallet = new Wallet();
+    Wallet_Arr = MyWallet.WalletInstance(); //Wallet_Arr[0].PRIVATE_KEY
+
+    await coinbaseTx();
+
+
+
+    BlockChainInstance = new Blockchain();
+
+}
+main();
 
 
 // Iso_MongoService.addMongo("blocks", _addObj_blocks);

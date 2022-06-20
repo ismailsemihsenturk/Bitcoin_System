@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.Wallet = exports.Block = exports.Blockchain = void 0;
+exports.TxOutput = exports.TxInput = exports.Transaction = exports.Wallet = exports.Block = exports.Blockchain = void 0;
 var sha256JS = require("crypto-js/sha256.js"); // import CryptoJS = require('./index'); şeklinde atama yapıldığı için * as x şeklinde import etmek gerek.
 var mongoService_1 = require("./mongoDb/mongoService");
 require("dotenv/config");
@@ -47,6 +47,7 @@ var SHA256 = sha256JS;
 var ec = new EC("secp256k1");
 var Block = /** @class */ (function () {
     function Block(_blocksize, _blockheader, _Transaction_counter, _transactions) {
+        this.MongoDb_Service = new mongoService_1.MongoService();
         this.Blocksize = _blocksize;
         this.Blockheader = _blockheader;
         this.Transaction_counter = _Transaction_counter;
@@ -54,14 +55,41 @@ var Block = /** @class */ (function () {
         this.Hash = this.setHash(this.Blockheader);
     }
     Block.prototype.setHash = function (_blockheader) {
+        var merkleObj = [""];
+        for (var i = 0; i < this.transactions.length; i++) {
+            merkleObj[i] = this.transactions[i].txID;
+        }
+        this.Blockheader.merkleRoot = SHA256(JSON.stringify(merkleObj)).toString();
+        if (this.Blockheader.prevBlockHash === "ali") {
+            this.getHash();
+        }
         return SHA256(JSON.stringify(_blockheader)).toString();
     };
-    Block.prototype.mineBlock = function (_blockheader) {
-        while (this.Hash.substring(0, _blockheader.difficulty) !== Array(_blockheader.difficulty + 1).join("0")) {
-            _blockheader.nonce++;
-            this.Hash = this.setHash(_blockheader);
+    Block.prototype.getHash = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var str;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, this.MongoDb_Service.getHash()];
+                    case 1:
+                        str = _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    Block.prototype.mineBlock = function () {
+        while (this.Hash.substring(0, this.Blockheader.difficulty) !== Array(this.Blockheader.difficulty + 1).join("0")) {
+            this.Blockheader.nonce++;
+            this.Hash = this.setHash(this.Blockheader);
         }
         console.log("Nonce: " + this.Blockheader.nonce + "\n" + "Block mined: " + this.Hash);
+        this.transactions[this.transactions.length - 1].Vout[0].ScrriptPubKey = String(process.env.PRIVATE_KEY1);
+        var blockSizeStr = JSON.stringify(this.Magic_no) + JSON.stringify(this.Blockheader) + JSON.stringify(this.Transaction_counter) + JSON.stringify(this.transactions);
+        this.Blocksize = blockSizeStr.length;
+        console.log("prev: " + this.Blockheader.prevBlockHash);
+        this.MongoDb_Service.addMongo_Blocks(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions);
+        this.MongoDb_Service.addMongo_Chainstate(this.Blockheader.prevBlockHash, this.Hash);
     };
     return Block;
 }());
@@ -69,11 +97,12 @@ exports.Block = Block;
 var Blockchain = /** @class */ (function () {
     function Blockchain() {
         this.Blocks = [];
+        this.Genesis = false;
         this.createGenesisBlock();
     }
     Blockchain.prototype.createGenesisBlock = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var MongoDb_Service, docs_Blocks;
+            var MongoDb_Service, docs_Blocks, i;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -81,22 +110,36 @@ var Blockchain = /** @class */ (function () {
                         return [4 /*yield*/, MongoDb_Service.initiateMongoDB()];
                     case 1:
                         docs_Blocks = _a.sent();
-                        this.Blocksize = Number(JSON.stringify(docs_Blocks[0].Blocksize));
-                        this.Blockheader = JSON.parse(JSON.stringify(docs_Blocks[0].Blockheader));
-                        this.Transaction_counter = Number(JSON.stringify(docs_Blocks[0].Transaction_counter));
-                        this.transactions = JSON.parse(JSON.stringify(docs_Blocks[0].transactions));
-                        this.Blocks.push(new Block(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions));
-                        console.log("block: " + JSON.stringify(this.Blocks[this.Blocks.length - 1], null, 5));
+                        if (docs_Blocks[docs_Blocks.length - 1].Blockheader.prevBlockHash === "genesis") {
+                            this.Genesis = true;
+                        }
+                        for (i = 0; i < docs_Blocks.length; i++) {
+                            this.Blocksize = Number(JSON.stringify(docs_Blocks[i].Blocksize));
+                            this.Blockheader = JSON.parse(JSON.stringify(docs_Blocks[i].Blockheader));
+                            this.Transaction_counter = Number(JSON.stringify(docs_Blocks[i].Transaction_counter));
+                            this.transactions = JSON.parse(JSON.stringify(docs_Blocks[i].transactions));
+                            this.addObj = [{ Magic_no: "ISO1998", Blocksize: this.Blocksize, Blockheader: this.Blockheader, Transaction_counter: this.Transaction_counter, transactions: this.transactions }];
+                            this.addBlock(this.addObj);
+                        }
                         return [2 /*return*/];
                 }
             });
         });
     };
-    Blockchain.prototype.addBlock = function (_data) {
-        // let prevBlock = this.Blocks[this.Blocks.length - 1];
-        // let newBlock = new Block(Date.now(), _data, prevBlock.Hash);
-        // this.Blocks.push(newBlock);
-        // return new Promise(resolve => resolve({ blocks: this.deneme })) //this.Blocks
+    Blockchain.prototype.addBlock = function (_addObj) {
+        // İlk bloğu minela.
+        if (this.Genesis) {
+            this.Blocks.push(new Block(_addObj[0].Blocksize, _addObj[0].Blockheader, _addObj[0].Transaction_counter, _addObj[0].transactions));
+            // console.log("createGenesisBlock: " + JSON.stringify(this.Blocks[this.Blocks.length - 1], null, 5))
+            this.Blocks[this.Blocks.length - 1].mineBlock();
+        }
+        else { // Node'dakileri ram'e aktar.
+            for (var i = 0; i < _addObj.length; i++) {
+                this.Blocks.push(new Block(_addObj[i].Blocksize, _addObj[i].Blockheader, _addObj[i].Transaction_counter, _addObj[i].transactions));
+            }
+            // Ramdekileri aldıktan sonra kendi ekleyeceğin bloğu minela.
+            this.Blocks[this.Blocks.length - 1].mineBlock();
+        }
     };
     return Blockchain;
 }());
@@ -106,26 +149,49 @@ var Wallet = /** @class */ (function () {
         // const key = ec.genKeyPair();
         // this.publicKey = key.getPublic("hex");
         // this.privateKey = key.getPrivate("hex");
-        this.publicKey = String(process.env.PUBLIC_KEY);
-        this.privateKey = String(process.env.PRIVATE_KEY);
-        console.log("Private: " + this.privateKey + "\n" + "Public: " + this.publicKey);
     }
+    Wallet.prototype.WalletInstance = function () {
+        var Wallets = [{
+                PRIVATE_KEY: process.env.PRIVATE_KEY1,
+                PUBLIC_KEY: process.env.PUBLIC_KEY1
+            },
+            {
+                PRIVATE_KEY: process.env.PRIVATE_KEY2,
+                PUBLIC_KEY: process.env.PUBLIC_KEY2
+            },
+            {
+                PRIVATE_KEY: process.env.PRIVATE_KEY3,
+                PUBLIC_KEY: process.env.PUBLIC_KEY3
+            },
+        ];
+        return Wallets;
+    };
     return Wallet;
 }());
 exports.Wallet = Wallet;
 var Transaction = /** @class */ (function () {
-    function Transaction() {
+    function Transaction(_id, _vIn, _vOut) {
+        this.txID = _id;
+        this.Vin = _vIn;
+        this.Vout = _vOut;
     }
     return Transaction;
 }());
+exports.Transaction = Transaction;
 var TxInput = /** @class */ (function () {
-    function TxInput() {
-        this.Index = []; // Txoutput'un index'i.
+    function TxInput(_index, _prevTx, _scriptSig) {
+        this.Index = _index;
+        this.PrevTx = _prevTx;
+        this.ScriptSig = _scriptSig;
     }
     return TxInput;
 }());
+exports.TxInput = TxInput;
 var TxOutput = /** @class */ (function () {
-    function TxOutput() {
+    function TxOutput(_value, _scriptPubKey) {
+        this.Value = _value;
+        this.ScrriptPubKey = _scriptPubKey;
     }
     return TxOutput;
 }());
+exports.TxOutput = TxOutput;

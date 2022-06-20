@@ -11,7 +11,7 @@ const SHA256 = sha256JS;
 const ec = new EC("secp256k1");
 
 
-interface IBlockStructure {
+export interface IBlockStructure {
     Magic_no: "ISO1998",
     Blocksize: number,
     Blockheader: {
@@ -37,8 +37,12 @@ interface IBlockStructure {
     }]
 }
 
+export type IBlockStructureType = IBlockStructure[];
+
+
 class Block implements IBlockStructure {
 
+    MongoDb_Service = new MongoService();
     Hash: string;
 
     Magic_no: "ISO1998";
@@ -71,31 +75,59 @@ class Block implements IBlockStructure {
         this.Blockheader = _blockheader;
         this.Transaction_counter = _Transaction_counter;
         this.transactions = _transactions;
-
         this.Hash = this.setHash(this.Blockheader);
 
     }
 
-
     setHash(_blockheader) {
+
+        let merkleObj = [""];
+        for (let i = 0; i < this.transactions.length; i++) {
+            merkleObj[i] = this.transactions[i].txID;
+        }
+
+        this.Blockheader.merkleRoot = SHA256(JSON.stringify(merkleObj)).toString();
+
+        if (this.Blockheader.prevBlockHash === "") {
+            this.getHash();
+        }
         return SHA256(JSON.stringify(_blockheader)).toString();
     }
 
-    mineBlock(_blockheader) {
+    async getHash() {
+        let str = await this.MongoDb_Service.getHash();
+        this.Blockheader.prevBlockHash = str.substring(1,str.length-1)
+        // console.log("prev: "+this.Blockheader.prevBlockHash)
+    }
 
-        while (this.Hash.substring(0, _blockheader.difficulty) !== Array(_blockheader.difficulty + 1).join("0")) {
-            _blockheader.nonce++;
-            this.Hash = this.setHash(_blockheader);
+    mineBlock() {
+
+        while (this.Hash.substring(0, this.Blockheader.difficulty) !== Array(this.Blockheader.difficulty + 1).join("0")) {
+            this.Blockheader.nonce++;
+            this.Hash = this.setHash(this.Blockheader);
         }
         console.log("Nonce: " + this.Blockheader.nonce + "\n" + "Block mined: " + this.Hash);
+
+
+        this.transactions[this.transactions.length - 1].Vout[0].ScrriptPubKey = String(process.env.PRIVATE_KEY1);
+
+        let blockSizeStr = JSON.stringify(this.Magic_no) + JSON.stringify(this.Blockheader) + JSON.stringify(this.Transaction_counter) + JSON.stringify(this.transactions);
+        this.Blocksize = blockSizeStr.length
+
+
+        console.log("prev: "+ this.Blockheader.prevBlockHash )
+        this.MongoDb_Service.addMongo_Blocks(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions);
+        this.MongoDb_Service.addMongo_Chainstate(this.Blockheader.prevBlockHash, this.Hash)
+
     }
 
 }
 
-
 class Blockchain implements IBlockStructure {
 
     public Blocks: Block[] = [];
+    public Genesis: boolean = false;
+    public addObj: IBlockStructureType;
 
     Magic_no: "ISO1998";
     Blocksize: number;
@@ -129,28 +161,50 @@ class Blockchain implements IBlockStructure {
 
     async createGenesisBlock() {
 
-        // Check the db 
+        // Node'a yeni bağlanan kişi server'dan bütün blokcları çeker.
         const MongoDb_Service = new MongoService();
         let docs_Blocks = await MongoDb_Service.initiateMongoDB();
 
-        this.Blocksize = Number(JSON.stringify(docs_Blocks[0].Blocksize));
+        if (docs_Blocks[docs_Blocks.length-1].Blockheader.prevBlockHash ==="genesis") { this.Genesis = true; }
 
-        this.Blockheader = JSON.parse(JSON.stringify(docs_Blocks[0].Blockheader));
+        for (let i = 0; i < docs_Blocks.length; i++) {
+            this.Blocksize = Number(JSON.stringify(docs_Blocks[i].Blocksize));
 
-        this.Transaction_counter = Number(JSON.stringify(docs_Blocks[0].Transaction_counter));
+            this.Blockheader = JSON.parse(JSON.stringify(docs_Blocks[i].Blockheader));
 
-        this.transactions = JSON.parse(JSON.stringify(docs_Blocks[0].transactions));
+            this.Transaction_counter = Number(JSON.stringify(docs_Blocks[i].Transaction_counter));
 
-        this.Blocks.push(new Block(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions));
+            this.transactions = JSON.parse(JSON.stringify(docs_Blocks[i].transactions));
 
-        console.log("block: " + JSON.stringify(this.Blocks[this.Blocks.length -1], null, 5))
+            this.addObj = [{ Magic_no: "ISO1998", Blocksize: this.Blocksize, Blockheader: this.Blockheader, Transaction_counter: this.Transaction_counter, transactions: this.transactions }];
+
+            this.addBlock(this.addObj);
+
+        }
+
     }
 
-    addBlock(_data: Block) {
-        // let prevBlock = this.Blocks[this.Blocks.length - 1];
-        // let newBlock = new Block(Date.now(), _data, prevBlock.Hash);
-        // this.Blocks.push(newBlock);
-        // return new Promise(resolve => resolve({ blocks: this.deneme })) //this.Blocks
+    addBlock(_addObj: IBlockStructureType) {
+
+        // İlk bloğu minela.
+        if (this.Genesis) {
+            this.Blocks.push(new Block(_addObj[0].Blocksize, _addObj[0].Blockheader, _addObj[0].Transaction_counter, _addObj[0].transactions));
+
+           // console.log("createGenesisBlock: " + JSON.stringify(this.Blocks[this.Blocks.length - 1], null, 5))
+
+            this.Blocks[this.Blocks.length - 1].mineBlock()
+
+        }
+        else { // Node'dakileri ram'e aktar.
+            for (let i = 0; i < _addObj.length; i++) {
+                this.Blocks.push(new Block(_addObj[i].Blocksize, _addObj[i].Blockheader, _addObj[i].Transaction_counter, _addObj[i].transactions));
+            }
+
+            // Ramdekileri aldıktan sonra kendi ekleyeceğin bloğu minela.
+            this.Blocks[this.Blocks.length - 1].mineBlock()
+        }
+
+
     }
 }
 
@@ -163,24 +217,39 @@ class Wallet {
         // const key = ec.genKeyPair();
         // this.publicKey = key.getPublic("hex");
         // this.privateKey = key.getPrivate("hex");
-
-        this.publicKey = String(process.env.PUBLIC_KEY);
-        this.privateKey = String(process.env.PRIVATE_KEY);
-
-        console.log("Private: "+ this.privateKey + "\n" + "Public: "+this.publicKey)
     }
 
+    WalletInstance() {
+
+        let Wallets = [{
+            PRIVATE_KEY: process.env.PRIVATE_KEY1,
+            PUBLIC_KEY: process.env.PUBLIC_KEY1
+        },
+        {
+            PRIVATE_KEY: process.env.PRIVATE_KEY2,
+            PUBLIC_KEY: process.env.PUBLIC_KEY2
+        },
+        {
+            PRIVATE_KEY: process.env.PRIVATE_KEY3,
+            PUBLIC_KEY: process.env.PUBLIC_KEY3
+        },
+        ]
+        return Wallets;
+    }
 
 }
 
 class Transaction {
 
-    public ID: string; //byte
+    public txID: string; //byte
     public Vin: TxInput[];
     public Vout: TxOutput[];
 
-    constructor() {
+    constructor(_id, _vIn, _vOut) {
 
+        this.txID = _id;
+        this.Vin = _vIn;
+        this.Vout = _vOut;
 
     }
 
@@ -190,12 +259,15 @@ class Transaction {
 
 class TxInput {
 
-    public Index: any = []; // Txoutput'un index'i.
-    public PrevTx: number; // Bir önceki Transaction'ın hashi
+    public Index: number; // Bir önceki Tx içerisindeki kaçıncı output.
+    public PrevTx: number; //  Bir önceki Transaction'ın hashi
     public ScriptSig: string; // TxOutput'un scriptPubkey'inde kullanılmak için gerekli data'yı sağlar. Eğer data doğru ise output açılır ve içindeki "Value"ya erişilir. Eğer yanlışsa output-input'u referans veremez ve böylelikle kimse başkasının parasını harcayamaz.
 
-    constructor() {
+    constructor(_index, _prevTx, _scriptSig) {
 
+        this.Index = _index;
+        this.PrevTx = _prevTx;
+        this.ScriptSig = _scriptSig;
 
     }
 
@@ -207,9 +279,10 @@ class TxOutput {
     public Value: number; //Satoshi miktarı, BTC'nin 100 milyonda biri.
     public ScrriptPubKey: string; //Para gönderilecek kişinin cüzdan adresi
 
-    constructor() {
+    constructor(_value, _scriptPubKey) {
 
-
+        this.Value = _value;
+        this.ScrriptPubKey = _scriptPubKey;
     }
 
 }
@@ -223,4 +296,4 @@ class TxOutput {
 // ISO_Block.mineBlock(3);
 // console.log(JSON.stringify(ISO,null,4));
 
-export { Blockchain, Block, Wallet };
+export { Blockchain, Block, Wallet, Transaction, TxInput, TxOutput };
