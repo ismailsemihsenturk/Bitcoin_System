@@ -1,5 +1,5 @@
 import { Block, Blockchain, Wallet, Transaction, TxInput, TxOutput, IBlockStructure, IBlockStructureType } from "../block";
-import { AbstractCursor, AggregationCursor, Collection, CollectionInfo, Db, MongoClient, UpdateResult } from "mongodb";
+import { AbstractCursor, AggregationCursor, Collection, CollectionInfo, Db, MongoClient, ObjectId, UpdateResult } from "mongodb";
 import { resolve } from "path";
 import { callbackify } from "util";
 import { mainModule } from "process";
@@ -7,6 +7,7 @@ import { SHA256 } from "crypto-js";
 import { type } from "os";
 const blockDocs = require("./mongoDocs/blocks.json");
 const chainstateDocs = require("./mongoDocs/chainstate.json");
+const Bitcoin = require('bitcoin-address-generator');
 //import blockDocs from "./mongoDocs/blocks.json";
 
 
@@ -146,22 +147,24 @@ class MongoService {
 
     async addMongo_Blocks(_Blocksize, _Blockheader, _Transaction_counter, _transactions) {
 
+        colBlocks[colBlocks.length - 1]._id = new ObjectId();
         colBlocks[colBlocks.length - 1].Blocksize = _Blocksize;
         colBlocks[colBlocks.length - 1].Blockheader = _Blockheader;
         colBlocks[colBlocks.length - 1].Transaction_counter = _Transaction_counter;
         colBlocks[colBlocks.length - 1].transactions = _transactions;
 
-        const addResult = await this.DbObject.collection("blocks").insertOne(colBlocks[colBlocks.length - 1]);
+        await this.DbObject.collection("blocks").insertOne(colBlocks[colBlocks.length - 1]);
     }
 
     async addMongo_Chainstate(_prevHash, _hash) {
 
         let addObj = {
+            _id: new ObjectId(),
             prevHash: _prevHash,
             Hash: _hash
         }
         console.log("prev mongo: " + addObj.prevHash);
-        const addResult = await this.DbObject.collection("chainstate").insertOne(addObj);
+        await this.DbObject.collection("chainstate").insertOne(addObj);
     }
 
     getHash() {
@@ -190,12 +193,13 @@ let Wallet_Arr;
 let Iso_MongoService;
 let BlockChainInstance: Blockchain;
 let TxInstance: Transaction[] = [];
-let In_TxInstance: TxInput[] = [(new TxInput(-1, -1, "Coinbase Tx"))];
-let Out_TxInstance: TxOutput[] = [(new TxOutput(100000, "Miner Public Key"))];
+let In_TxInstance: TxInput[] = [(new TxInput(-1, -1, ["Coinbase Tx"],["genesis"]))];
+let Out_TxInstance: TxOutput[] = [(new TxOutput(100000, "Miner Public Key Hash"))];
 let HashObj;
 let HashStr;
 
 let colBlocks = [{
+    _id: new ObjectId(),
     Magic_no: "ISO1998",
     Blocksize: 0,
     Blockheader: {
@@ -222,7 +226,7 @@ let colBlocks = [{
 }];
 
 
-async function coinbaseTx() {
+function coinbaseTx() {
     // Coinbase Transaction reward ödülün taşır. Bundan dolayı:
 
     // ------- TX INPUT--------
@@ -234,44 +238,34 @@ async function coinbaseTx() {
     // Value: block ödülüdür. 
     // ScriptPubKey block'u minelayan kullanıcının public key'idir.
 
-    let TxHash = SHA256(JSON.stringify(In_TxInstance) + JSON.stringify(Out_TxInstance)).toString();
-    TxInstance.push(new Transaction(TxHash, In_TxInstance, Out_TxInstance));
+    let TxHash = SHA256(JSON.stringify(In_TxInstance[0]) + JSON.stringify(Out_TxInstance[0])).toString();
+    Out_TxInstance[0].PubKeyHash = Bitcoin.AddressToPublicKeyHash(process.env.ADDRESS1)
+    TxInstance.push(new Transaction([TxHash], In_TxInstance, Out_TxInstance));
 
 }
+
+
+
+
 async function main() {
 
     Iso_MongoService = new MongoService();
     MyWallet = new Wallet();
-    Wallet_Arr = MyWallet.WalletInstance(); //Wallet_Arr[0].PRIVATE_KEY
+    Wallet_Arr = await MyWallet.WalletInstance(); //Wallet_Arr[0].PRIVATE_KEY
 
-    await coinbaseTx();
+    // coinbaseTx();
 
 
 
-    BlockChainInstance = new Blockchain();
+    // BlockChainInstance = new Blockchain();
 
 }
 main();
-
-
-// Iso_MongoService.addMongo("blocks", _addObj_blocks);
-//Iso_MongoService.addMongo("chainstate",_addObj_chainstate);
-
 
 //--------------------
 
 
 export { MongoService }
 
-
-
-// ------------------------------------------------------------------------
-//btoa= base64 encoding
-//atob()= base64 decoding + JSON.parse(decoded)
-//new Blob([]) = byte size
-
-// let Block_Decoded = atob(Block_Encoded);
-// let a = JSON.parse(Block_Decoded);
-// console.log(a.Hash);
 
 

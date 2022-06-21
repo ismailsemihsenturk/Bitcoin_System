@@ -176,17 +176,17 @@ var MongoService = /** @class */ (function () {
     };
     MongoService.prototype.addMongo_Blocks = function (_Blocksize, _Blockheader, _Transaction_counter, _transactions) {
         return __awaiter(this, void 0, void 0, function () {
-            var addResult;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        colBlocks[colBlocks.length - 1]._id = new mongodb_1.ObjectId();
                         colBlocks[colBlocks.length - 1].Blocksize = _Blocksize;
                         colBlocks[colBlocks.length - 1].Blockheader = _Blockheader;
                         colBlocks[colBlocks.length - 1].Transaction_counter = _Transaction_counter;
                         colBlocks[colBlocks.length - 1].transactions = _transactions;
                         return [4 /*yield*/, this.DbObject.collection("blocks").insertOne(colBlocks[colBlocks.length - 1])];
                     case 1:
-                        addResult = _a.sent();
+                        _a.sent();
                         return [2 /*return*/];
                 }
             });
@@ -194,18 +194,19 @@ var MongoService = /** @class */ (function () {
     };
     MongoService.prototype.addMongo_Chainstate = function (_prevHash, _hash) {
         return __awaiter(this, void 0, void 0, function () {
-            var addObj, addResult;
+            var addObj;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         addObj = {
+                            _id: new mongodb_1.ObjectId(),
                             prevHash: _prevHash,
                             Hash: _hash
                         };
                         console.log("prev mongo: " + addObj.prevHash);
                         return [4 /*yield*/, this.DbObject.collection("chainstate").insertOne(addObj)];
                     case 1:
-                        addResult = _a.sent();
+                        _a.sent();
                         return [2 /*return*/];
                 }
             });
@@ -228,6 +229,7 @@ var Out_TxInstance = [(new block_1.TxOutput(100000, "Miner Public Key"))];
 var HashObj;
 var HashStr;
 var colBlocks = [{
+        _id: new mongodb_1.ObjectId(),
         Magic_no: "ISO1998",
         Blocksize: 0,
         Blockheader: {
@@ -253,14 +255,16 @@ var colBlocks = [{
             }]
     }];
 function coinbaseTx() {
-    return __awaiter(this, void 0, void 0, function () {
-        var TxHash;
-        return __generator(this, function (_a) {
-            TxHash = (0, crypto_js_1.SHA256)(JSON.stringify(In_TxInstance) + JSON.stringify(Out_TxInstance)).toString();
-            TxInstance.push(new block_1.Transaction(TxHash, In_TxInstance, Out_TxInstance));
-            return [2 /*return*/];
-        });
-    });
+    // Coinbase Transaction reward ödülün taşır. Bundan dolayı:
+    // ------- TX INPUT--------
+    // Bir önceki transaction içindeki output'un index değeri yoktur.
+    // Bir önceki tx hash'i yoktur.
+    // ScripSig'de herhangi bir veri vardır.
+    // ------- TX OUTPUT--------
+    // Value: block ödülüdür. 
+    // ScriptPubKey block'u minelayan kullanıcının public key'idir.
+    var TxHash = (0, crypto_js_1.SHA256)(JSON.stringify(In_TxInstance[0]) + JSON.stringify(Out_TxInstance[0])).toString();
+    TxInstance.push(new block_1.Transaction([TxHash], In_TxInstance, Out_TxInstance));
 }
 function main() {
     return __awaiter(this, void 0, void 0, function () {
@@ -269,21 +273,12 @@ function main() {
                 case 0:
                     Iso_MongoService = new MongoService();
                     MyWallet = new block_1.Wallet();
-                    Wallet_Arr = MyWallet.WalletInstance(); //Wallet_Arr[0].PRIVATE_KEY
-                    return [4 /*yield*/, coinbaseTx()];
+                    return [4 /*yield*/, MyWallet.WalletInstance()];
                 case 1:
-                    _a.sent();
-                    BlockChainInstance = new block_1.Blockchain();
+                    Wallet_Arr = _a.sent(); //Wallet_Arr[0].PRIVATE_KEY
                     return [2 /*return*/];
             }
         });
     });
 }
 main();
-// ------------------------------------------------------------------------
-//btoa= base64 encoding
-//atob()= base64 decoding + JSON.parse(decoded)
-//new Blob([]) = byte size
-// let Block_Decoded = atob(Block_Encoded);
-// let a = JSON.parse(Block_Decoded);
-// console.log(a.Hash);

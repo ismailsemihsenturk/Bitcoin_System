@@ -40,6 +40,8 @@ exports.TxOutput = exports.TxInput = exports.Transaction = exports.Wallet = expo
 var sha256JS = require("crypto-js/sha256.js"); // import CryptoJS = require('./index'); şeklinde atama yapıldığı için * as x şeklinde import etmek gerek.
 var mongoService_1 = require("./mongoDb/mongoService");
 require("dotenv/config");
+var readline = require("readline");
+var Bitcoin = require('bitcoin-address-generator');
 // import * as ECobj from "elliptic/lib/elliptic/ec/index.js";" ecma5 ile yazıldığı için export {EC} değil module.exports = EC bu yüzden require ile atama gerekiyor.
 // Yukarıdakilerin çalışması için type defination lazım olursa npm i @types/elliptic --save-dev şeklinde @types'ları indirmek gerek. 
 var EC = require("elliptic/lib/elliptic/ec/index");
@@ -48,22 +50,28 @@ var ec = new EC("secp256k1");
 var Block = /** @class */ (function () {
     function Block(_blocksize, _blockheader, _Transaction_counter, _transactions) {
         this.MongoDb_Service = new mongoService_1.MongoService();
+        this.Console = false;
         this.Blocksize = _blocksize;
         this.Blockheader = _blockheader;
         this.Transaction_counter = _Transaction_counter;
-        this.transactions = _transactions;
+        this.transactions.push(_transactions);
         this.Hash = this.setHash(this.Blockheader);
+        this.IO_index = 0;
     }
     Block.prototype.setHash = function (_blockheader) {
-        var merkleObj = [""];
+        var merkleObj = [[""]];
         for (var i = 0; i < this.transactions.length; i++) {
-            merkleObj[i] = this.transactions[i].txID;
+            for (var y = 0; y < this.transactions[i].txID.length; y++) {
+                merkleObj[i][y] = this.transactions[i].txID[y];
+            }
         }
         this.Blockheader.merkleRoot = SHA256(JSON.stringify(merkleObj)).toString();
-        if (this.Blockheader.prevBlockHash === "") {
-            this.getHash();
+        var BlOCKHASH = SHA256(JSON.stringify(_blockheader)).toString();
+        if (this.Blockheader.prevBlockHash !== "genesis") {
+            //this.getHash();
+            this.Blockheader.prevBlockHash = BlOCKHASH;
         }
-        return SHA256(JSON.stringify(_blockheader)).toString();
+        return BlOCKHASH;
     };
     Block.prototype.getHash = function () {
         var str = this.MongoDb_Service.getHash();
@@ -76,13 +84,67 @@ var Block = /** @class */ (function () {
             this.Hash = this.setHash(this.Blockheader);
         }
         console.log("Nonce: " + this.Blockheader.nonce + "\n" + "Block mined: " + this.Hash);
-        this.transactions[this.transactions.length - 1].Vout[0].ScrriptPubKey = String(process.env.PRIVATE_KEY1);
+        //Kazıyıcı ödülü
+        this.transactions[this.transactions.length - 1].Vout[0].ScrriptPubKey = String(process.env.ADDRESS1);
         var blockSizeStr = JSON.stringify(this.Magic_no) + JSON.stringify(this.Blockheader) + JSON.stringify(this.Transaction_counter) + JSON.stringify(this.transactions);
         this.Blocksize = blockSizeStr.length;
-        console.log("prev: " + this.Blockheader.prevBlockHash);
-        console.log("prev2: " + JSON.stringify(this.Blockheader));
+        if (!this.Console && this.Blockheader.prevBlockHash !== "genesis") {
+            this.ConsoleQuestion();
+        }
         this.MongoDb_Service.addMongo_Blocks(this.Blocksize, this.Blockheader, this.Transaction_counter, this.transactions);
         this.MongoDb_Service.addMongo_Chainstate(this.Blockheader.prevBlockHash, this.Hash);
+        this.IO_index++;
+    };
+    Block.prototype.ConsoleQuestion = function () {
+        var _this = this;
+        var rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+        rl.question("Tx eklemeye devam etmek ister misiniz? [y/n] ", function (answer) {
+            switch (answer.toLowerCase()) {
+                case 'y':
+                    rl.question("PublicKey Miktar", function (txData) {
+                        var txString = txData.trimStart().split(" ");
+                        if (txString[1] === undefined) {
+                            console.log("HATALI KULLANIM \n Doğru Kullanım: PublicKey Miktar ");
+                            rl.close();
+                            _this.ConsoleQuestion();
+                        }
+                        console.log("txString: " + txString);
+                        var txPublic = txString[0];
+                        var txAmount = Number(txString[1]);
+                        if (isNaN(txAmount)) {
+                            console.log("HATALI KULLANIM \n Doğru Kullanım: PublicKey Miktar ");
+                            rl.close();
+                            _this.ConsoleQuestion();
+                        }
+                        var index = _this.transactions.length - 1;
+                        var Vindex = _this.transactions[index].Vin.length - 1;
+                        var Voutindex = _this.transactions[index].Vout.length - 1;
+                        //  Tx [1] { 
+                        //     txId[1]  
+                        //     Vın[1]  = index, prevTxHash, ScriptSig
+                        //     Vout[1] = value, PublicKey
+                        //  }
+                        var scriptSig;
+                        var txInput = new TxInput(_this.IO_index, _this.transactions[index].txID[Vindex], scriptSig);
+                    });
+                    console.log("Tx eklendi.!");
+                    _this.Console = true;
+                    _this.mineBlock();
+                    rl.close();
+                    _this.ConsoleQuestion();
+                    break;
+                case 'n':
+                    console.log("Çıkış yapılıyor.");
+                    rl.close();
+                    break;
+                default:
+                    console.log("Geçersiz komut!");
+            }
+            rl.close();
+        });
     };
     return Block;
 }());
@@ -145,20 +207,31 @@ var Wallet = /** @class */ (function () {
         // this.privateKey = key.getPrivate("hex");
     }
     Wallet.prototype.WalletInstance = function () {
-        var Wallets = [{
-                PRIVATE_KEY: process.env.PRIVATE_KEY1,
-                PUBLIC_KEY: process.env.PUBLIC_KEY1
-            },
-            {
-                PRIVATE_KEY: process.env.PRIVATE_KEY2,
-                PUBLIC_KEY: process.env.PUBLIC_KEY2
-            },
-            {
-                PRIVATE_KEY: process.env.PRIVATE_KEY3,
-                PUBLIC_KEY: process.env.PUBLIC_KEY3
-            },
-        ];
-        return Wallets;
+        return __awaiter(this, void 0, void 0, function () {
+            var Wallets;
+            return __generator(this, function (_a) {
+                Bitcoin.createWalletAddress(function (response) {
+                    console.log("callback: " + JSON.stringify(response, null, 3));
+                });
+                Wallets = [{
+                        PRIVATE_KEY: process.env.PRIVATE_KEY1,
+                        PUBLIC_KEY: process.env.PUBLIC_KEY1,
+                        ADDRESS: process.env.ADDRESS1
+                    },
+                    {
+                        PRIVATE_KEY: process.env.PRIVATE_KEY2,
+                        PUBLIC_KEY: process.env.PUBLIC_KEY2,
+                        ADDRESS: process.env.ADDRESS2
+                    },
+                    {
+                        PRIVATE_KEY: process.env.PRIVATE_KEY3,
+                        PUBLIC_KEY: process.env.PUBLIC_KEY3,
+                        ADDRESS: process.env.ADDRESS3
+                    },
+                ];
+                return [2 /*return*/, Wallets];
+            });
+        });
     };
     return Wallet;
 }());
