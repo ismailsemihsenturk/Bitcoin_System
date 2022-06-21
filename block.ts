@@ -107,11 +107,11 @@ class Block implements IBlockStructure {
         return BlOCKHASH
     }
 
-    getHash() {
-        let str = this.MongoDb_Service.getHash();
-        this.Blockheader.prevBlockHash = str.substring(1, str.length - 1)
-        // console.log("prev: "+this.Blockheader.prevBlockHash)
-    }
+    // getHash() {
+    //     let str = this.MongoDb_Service.getHash();
+    //     this.Blockheader.prevBlockHash = str.substring(1, str.length - 1)
+    //     // console.log("prev: "+this.Blockheader.prevBlockHash)
+    // }
 
     mineBlock() {
 
@@ -182,27 +182,43 @@ class Block implements IBlockStructure {
                         //  }
 
                         let signTx;
+
                         let txInput = new TxInput(this.IO_index, this.transactions[index].txID[Vindex], signTx, process.env.PUBLIC_KEY2);
 
                         let InputPublicKeyHash = Bitcoin.PublicKeyToPublicKeyHash(process.env.PUBLIC_KEY2);
-                        let OutputPublicKeyHash = Bitcoin.AddressToPublicKeyHash(txAddress) //process.env.ADDRESS2
+                        let OutputPublicKeyHash = Bitcoin.AddressToPublicKeyHash(txAddress) //process.env.ADDRESS2 = yollanacak kişi
+                        // ADDRESS1 = BEN
 
-                        let txOutput = new TxOutput(1000,OutputPublicKeyHash);
-                        
-                        let TxHash = SHA256(JSON.stringify(txInput) + JSON.stringify(txOutput)).toString();
-                        let TxInstance = new Transaction([TxHash],[txInput],[txOutput]);
-                        let signingKey = ec.keyFromPrivate(process.env.PRIVATE_KEY_2);
+                        let txOutput = new TxOutput(txAmount,OutputPublicKeyHash);
+                    
+                        let TxIOHash = SHA256(JSON.stringify(txInput) + JSON.stringify(txOutput)).toString();
+
+                        let TxInstance = new Transaction([""],[txInput],[txOutput]);
+
+                        let signingKey = ec.keyFromPrivate(process.env.PRIVATE_KEY1);
+                        let signinPubKey = signingKey.getPublic("hex");
+
+                        const sigIO = signingKey.sign(TxIOHash, "base64");
+                        signTx = sigIO.toDER("hex");
+
+                        TxInstance.Vin[Vindex].Signature = signTx;
+
+                        let TxHash = SHA256(JSON.stringify(TxInstance.Vin) + JSON.stringify(TxInstance.Vout)).toString();
 
                         const sig = signingKey.sign(TxHash, "base64");
                         signTx = sig.toDER("hex");
-                        
-                        TxInstance.Vin[Vindex].Signature = signTx;
 
+                        TxInstance.txID[index] = TxHash;
                         this.transactions.push(JSON.parse(JSON.stringify(TxInstance)));
                      
                         
                         // Input içindeki PublicKey'i hashleyip, Output içindeki Addres => Hashed Public Key ile karşılaştırıp. Aynı olup olmadıklarına bakıyoruz. Böylelikle input-output referansı olacak ve coinleri gönderen kişinin o kişi olduğu kanıtlanmış olacak.
-                        let BytesCompare = Buffer.compare(InputPublicKeyHash,OutputPublicKeyHash)
+                        let BytesCompare = Buffer.compare(InputPublicKeyHash,OutputPublicKeyHash);
+
+                        // Public key ile daha önce priv key'i kullanarak imzaladığımız hash'i biz mi imzaladık diye kontrol ediyoruz.
+                        let IOSignCompare = signinPubKey.verify(TxIOHash, signTx);
+                        let SignCompare = signinPubKey.verify(TxHash, signTx);
+
 
 
 
