@@ -185,7 +185,7 @@ class Block implements IBlockStructure {
 
                         let txInput = new TxInput(this.IO_index, this.transactions[index].txID[Vindex], signTx, process.env.PUBLIC_KEY2);
 
-                        let InputPublicKeyHash = Bitcoin.PublicKeyToPublicKeyHash(process.env.PUBLIC_KEY2);
+                        let InputPublicKeyHash = Bitcoin.PublicKeyToPublicKeyHash(process.env.PUBLIC_KEY2); // Yollanacak kişi
                         let OutputPublicKeyHash = Bitcoin.AddressToPublicKeyHash(txAddress) //process.env.ADDRESS2 = yollanacak kişi
                         // ADDRESS1 = BEN
 
