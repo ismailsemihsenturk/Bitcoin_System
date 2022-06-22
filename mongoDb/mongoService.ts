@@ -5,6 +5,7 @@ import { callbackify } from "util";
 import { mainModule } from "process";
 import { SHA256 } from "crypto-js";
 import { type } from "os";
+import * as cryptoAES from "crypto-js/aes.js"
 const blockDocs = require("./mongoDocs/blocks.json");
 const chainstateDocs = require("./mongoDocs/chainstate.json");
 const Bitcoin = require('bitcoin-address-generator');
@@ -16,7 +17,7 @@ class MongoService {
     public Client: MongoClient;
     public DbObject: Db;
 
-    public DbName = "BlockChain_System";
+    public DbName = String(process.env.DB_NAME);
     public C_Blocks_Prop = blockDocs.validator.$jsonSchema.properties;
 
 
@@ -86,7 +87,7 @@ class MongoService {
 
                 addBlocktoStructure[0].Blocksize = 0;
                 addBlocktoStructure[0].Blockheader.version = 0;
-                addBlocktoStructure[0].Blockheader.prevBlockHash = "ali";
+                addBlocktoStructure[0].Blockheader.prevBlockHash = "";
                 addBlocktoStructure[0].Blockheader.merkleRoot = "";
                 addBlocktoStructure[0].Blockheader.timestamp = Date.now();
                 addBlocktoStructure[0].Blockheader.difficulty = 2;
@@ -193,8 +194,8 @@ let Wallet_Arr;
 let Iso_MongoService;
 let BlockChainInstance: Blockchain;
 let TxInstance: Transaction[] = [];
-let In_TxInstance: TxInput[] = [(new TxInput(-1, -1, ["Coinbase Tx"],["genesis"]))];
-let Out_TxInstance: TxOutput[] = [(new TxOutput(100000, "Miner Public Key Hash"))];
+let In_TxInstance: TxInput[] = [(new TxInput(-1, -1, ["Coinbase Tx"], ["genesis"]))];
+let Out_TxInstance: TxOutput[] = [(new TxOutput(100000, "Miner Public Key Hash",""))];
 let HashObj;
 let HashStr;
 
@@ -238,9 +239,13 @@ function coinbaseTx() {
     // Value: block ödülüdür. 
     // ScriptPubKey block'u minelayan kullanıcının public key'idir.
 
-    let TxHash = SHA256(JSON.stringify(In_TxInstance[0]) + JSON.stringify(Out_TxInstance[0])).toString();
-    Out_TxInstance[0].PubKeyHash = Bitcoin.AddressToPublicKeyHash(process.env.ADDRESS1)
-    TxInstance.push(new Transaction([TxHash], In_TxInstance, Out_TxInstance));
+    //Kazıyıcı ödülü
+    let TxHash = SHA256(JSON.stringify(In_TxInstance) + JSON.stringify(Out_TxInstance)).toString();
+    let CryptedOutput = cryptoAES.encrypt("1000", "kim minelar ise ona");
+    Out_TxInstance[0] = new TxOutput(1000, "kim minelar ise ona",CryptedOutput);
+    TxInstance.push(new Transaction(TxHash, In_TxInstance, Out_TxInstance));
+
+    return TxInstance;
 
 }
 
@@ -258,6 +263,7 @@ async function main() {
 
 
     // BlockChainInstance = new Blockchain();
+    // await BlockChainInstance.createGenesisBlock();
 
 }
 main();
@@ -265,7 +271,7 @@ main();
 //--------------------
 
 
-export { MongoService }
+export { MongoService, coinbaseTx }
 
 
 
